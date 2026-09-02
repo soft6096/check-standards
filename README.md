@@ -7,7 +7,7 @@
 ## 它解决什么问题
 
 - **注释没加全（含抽取的 private 方法）** → #1 方法级注释全覆盖：public + private/抽取方法逐个核对 Javadoc（类/字段/方法），无豁免
-- **日志没加全（ServiceImpl 方法零日志）** → #2 方法级日志全覆盖：每个业务方法（含 private 抽取方法）方法体内 ≥1 条日志，大段逻辑零日志 = ❌
+- **日志没加全（ServiceImpl 方法零日志）** → #2 方法级日志全覆盖：每个业务方法（含 private 抽取方法）方法体内 ≥1 条 INFO/WARN/ERROR 日志（debug 不算），大段逻辑无 INFO = ❌
 - **中间产物命名/路径不规范** → 核对前先矫正（技术方案 3.x.1 / 接口清单 3.x.2 / 核对报告 5.2.x / 验收报告 5.3.x，去文件名中的任务 ID 前缀 T0xx，移入模块版本目录），防核对扫不到、验收引用断裂
 - **check-standards 兜底没触发** → 本 skill 独立成可单独触发的 skill（不依赖 ai-dev-workflow 全流程），description 覆盖"写完代码/改完代码/提交前检查"等触发时机
 
@@ -42,7 +42,7 @@ cp -r check-standards ~/.claude/skills/
 
 | 组 | 项 |
 |---|---|
-| 方法与日志覆盖（新代码必核） | #1 方法级注释全覆盖（public + private/抽取方法 Javadoc）/ #2 方法级日志全覆盖（每方法体内 ≥1 条日志）/ #3 步骤注释+WHY / #4 禁翻译式 / #5 全类 @Slf4j 无 System.out |
+| 方法与日志覆盖（新代码必核） | #1 方法级注释全覆盖（public + private/抽取方法 Javadoc）/ #2 方法级日志全覆盖（每方法体内 ≥1 条 INFO/WARN/ERROR，debug 不算）/ #3 步骤注释+WHY / #4 禁翻译式 / #5 全类 @Slf4j 无 System.out |
 | 框架与产物 | 接口文档支持 / 日志框架支持 / SQL 在 XML / JSON 入参出参产物 |
 | SQL 与数据安全 | SQL 注释 / DDL 注释 / SQL 注入 / UPDATE-DELETE 带 WHERE |
 | 事务与代码质量 | 事务 rollbackFor / 构造器注入 / 分层边界 / Entity 不暴露 / 异常处理 / 命名 / 统一返回体 / 密码加密 / 分页上限 |

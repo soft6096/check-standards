@@ -103,8 +103,8 @@ Java 代码生成 / 修改完成后的**兜底闸门**：规范条目多、分�
 | # | 核对项 | 标准检查指令（实际执行） | 判定标准（全部满足才 ✅） |
 | :---: | :--- | :--- | :--- |
 | 1 | **方法级注释全覆盖** | ast-grep 列全部方法节点（`$MOD $RET $NAME($$$) { $$$ }`，含 public/private/protected/静态），逐个核对方法声明上方有 `/** */` Javadoc | **所有方法（public + private + 抽取方法，含测试方法）有 Javadoc**：功能 + @param/@return 写业务含义；Controller/ServiceImpl 抽取出来的私有辅助方法同样必须有类注释 + 方法 Javadoc（按 comment-standards 全量注释规则，无豁免） |
-| 2 | **方法级日志全覆盖** | grep/ast-grep 逐个检查方法体内是否含 `log.` 调用 | **Controller/Service/ServiceImpl/Job/Listener 的每个业务方法（public + private 抽取方法）方法体内至少有 1 条日志**（入口入参摘要 / 关键分支 / 结果）；大段逻辑（≥10 行）零日志 → ❌；纯 getter/setter/单行透传可豁免（注明豁免原因）；异常处 ERROR 带堆栈 |
-| 3 | 步骤注释 + WHY | `grep -rn "// 1\." src/main/java` 抽查 + 逐方法通读 | 方法体 ≥2 个逻辑步骤有编号注释；复杂逻辑有 `// WHY:`；**无 ≥10 行连续逻辑代码零注释**；长方法（>20 行）逐段核对（含方法后半段）；深层嵌套（≥3 层）分支前有注释（存量模式同样要求） |
+| 2 | **方法级日志全覆盖** | grep/ast-grep 逐个检查方法体内是否含 `log.info`/`log.warn`/`log.error` 调用（**`log.debug` 不算——线上不输出，视为无日志**）；再对含日志的方法判断是否覆盖关键阶段 | **Controller/Service/ServiceImpl/Job/Listener 的每个业务方法（public + private 抽取方法）方法体内 ≥1 条 INFO/WARN/ERROR 业务日志**（入口入参摘要 / 关键分支 / 结果返回前）；**方法内无任何 INFO/WARN/ERROR（即使有 log.debug）→ ❌**；大段逻辑（≥10 行）无 INFO/WARN/ERROR → ❌；方法含 ≥2 个业务阶段（查库/状态变更/循环组装等）但仅开头 1 条日志、中间关键逻辑无 INFO → ❌（"半覆盖"漏网形态）；纯 getter/setter/单行透传可豁免（注明豁免原因）；异常处 ERROR 带堆栈 |
+| 3 | 步骤注释 + WHY | `grep -rn "// 1\." src/main/java` 抽查 + **逐方法通读（长方法必须逐段核对，不得只 grep 命中数判 ✅）** | 方法体 ≥2 个逻辑步骤有编号注释（`// 1.` `// 2.`…，覆盖到方法最后一段逻辑）；**方法内每个业务段（查询/校验/循环/状态变更/组装）都有步骤注释，不得前半段有注释后半段裸奔**；复杂逻辑有 `// WHY:`；无 ≥10 行连续逻辑代码零注释；长方法（>20 行）逐段核对（含方法后半段）；深层嵌套（≥3 层）分支前有注释（存量模式同样要求） |
 | 4 | 禁翻译式注释 | 抽查注释 | 无逐行翻译式注释；注释写业务含义非复述代码 |
 | 5 | 全类 @Slf4j + 无 System.out | `grep -rln "@Slf4j" src/main/java`；`grep -rn "System.out" src/main/java` | Controller/Service/ServiceImpl/Job/Listener 全类 @Slf4j，无 System.out、无散落 Logger 混用 |
 
@@ -155,8 +155,9 @@ Java 代码生成 / 修改完成后的**兜底闸门**：规范条目多、分�
 
 > [!WARNING] #1/#2/#3 方法级核对必须逐方法通读（防"长代码丢焦点"）
 > grep/ast-grep 只能列出方法与"哪里有注释/日志"，证明不了"哪个方法缺"。**#1（方法 Javadoc）、#2（方法日志）、#3（步骤注释）必须对本轮生成/修改的每个 Java 文件逐方法通读**：
-> - **抽取方法（private 辅助方法）是漏注释/漏日志高发区**——Controller 里抽出的校验/转换方法、ServiceImpl 里抽出的组装/查询方法，逐个核对有方法 Javadoc、方法体内 ≥1 条日志
-> - 从方法第一行读到最后一行，重点盯方法后半段与深层嵌套分支；长方法（>20 行）逐段确认编号注释覆盖到最后一步
+> - **抽取方法（private 辅助方法）是漏注释/漏日志高发区**——Controller 里抽出的校验/转换方法、ServiceImpl 里抽出的组装/查询方法，逐个核对有方法 Javadoc、方法体内 ≥1 条 INFO/WARN/ERROR 日志
+> - **#2 防"半覆盖"漏网**：方法开头 1 条 `log.debug`（或 1 条 INFO）但中间 10+ 行查库/循环/组装逻辑无 INFO/WARN/ERROR → ❌（debug 不算日志，方法须关键阶段有 INFO）
+> - 从方法第一行读到最后一行，重点盯方法后半段与深层嵌套分支；长方法（>20 行）逐段确认编号注释覆盖到最后一步、每段业务逻辑都有日志
 > - 禁止只数 grep 命中数判 ✅；未通读的方法按"未核对"处理，打回重核
 
 ## 输出格式
