@@ -1,6 +1,6 @@
 ---
 name: check-standards
-description: Java 后端代码生成/修改完成后的关键规范兜底自检（check-standards，收敛闸门）。任何 Java 代码写完或改完后必须加载本 skill，用 grep/ast-grep 逐项核对关键规范——注释覆盖率（类/方法 Javadoc/步骤注释）、日志（@Slf4j/入口入参耗时/关键节点 INFO/异常 ERROR 带堆栈）、事务 rollbackFor、构造器注入、分层边界、SQL 在 XML、统一返回体、分页上限、密码加密等 12 项 HIGH + 代码规范组 C1-C6 + 注释组 N1-N4 + INFO + 场景化，每项附「文件:行号」证据；把未执行到位项（含 INFO，不分重要与否）统一提示用户确认是否补齐。触发场景：写完代码、代码生成完毕、改完代码、提交前检查、代码规范核对/审查、注释日志核对、code review、规范自检、兜底检查、验收复核。与 ai-dev-workflow 5.1 收尾 / 5.3 验收配合使用，也可独立触发。
+description: Java 后端代码生成/修改完成后的关键规范兜底自检（check-standards，收敛闸门）。任何 Java 代码写完或改完后必须加载本 skill，用 grep/ast-grep 逐项核对关键规范——注释覆盖率（类/方法 Javadoc/步骤注释）、日志（@Slf4j/入口入参耗时/关键节点 INFO/异常 ERROR 带堆栈）、事务 rollbackFor、构造器注入、分层边界、SQL 在 XML、统一返回体、分页上限、密码加密等 12 项 HIGH + 代码规范组 C1-C6 + 注释组 N1-N4 + INFO + 场景化，每项附「文件:行号」证据；把未执行到位项（含 INFO，不分重要与否）统一提示用户确认是否补齐。**核对前先矫正中间产物命名与路径**（技术方案 3.x.1 / 接口清单 3.x.2 / 规范核对报告 5.2.x / 验收报告 5.3.x，去文件名中的任务 ID 前缀 T0xx，移入模块版本目录）。触发场景：写完代码、代码生成完毕、改完代码、提交前检查、代码规范核对/审查、注释日志核对、code review、规范自检、兜底检查、验收复核、产物文件命名矫正、文件改名归位。与 ai-dev-workflow 5.2 规范核对节点 / 5.3 验收配合使用，也可独立触发。
 ---
 
 # 关键规范自动核对（Check Standards）
@@ -21,8 +21,36 @@ Java 代码生成 / 修改完成后的**兜底闸门**：规范条目多、分�
 
 **选型敏感核对项**（#1 接口文档 / #2 日志框架 / #3 数据访问层 / #10 返回体）：判定标准随项目模式变化，**先读 2.1 约束 / 0.5 扫描再判**；其余核对项（SQL 注释 / DDL 注释 / 事务 / 注入 / WHERE / 密码 / 分页等）为通用安全项，任何模式都按规范判定。
 
+## 第 0 步：中间产物命名与路径矫正（核对前必做，防核对扫不到/验收引用断裂）
+
+**为什么**：核对指令按规范命名扫描产物（如 `docs/*/3.*.1-技术方案*.md`、`3.*.2-接口清单*.md`）；若产物命名不规范（技术方案漏 `.1`、文件名带任务 ID 前缀 `T02-01`、5.2/5.3 报告漏功能序号）或路径不在模块版本目录下，**核对扫不到、验收引用断裂**。执行核对前先扫描矫正：
+
+### 目标命名规则（与 ai-dev-workflow「产物命名统一规则」一致，单一事实源）
+
+| 产物 | 规范命名 | 常见错误 → 矫正 |
+| :--- | :--- | :--- |
+| 技术方案 | `3.<功能项序号>.1-<功能名>-技术方案.md` | `3.1-服务产品分类与BANNER-技术方案.md` → `3.1.1-…`（漏 `.1`）；`3.6-T02-01-前台商品列表与详情-技术方案.md` → `3.6.1-…`（漏 `.1` + 任务 ID 前缀） |
+| 接口清单 | `3.<功能项序号>.2-<功能名>-接口清单（前后端通用）.md` | `3.6.2-T02-01-前台商品列表与详情-接口清单（前后端通用）.md` → `3.6.2-…`（任务 ID 前缀） |
+| 任务拆解 / 契约测试 | `4.1-<功能名>-任务拆解.md` / `4.2-<功能名>-接口契约测试.md` | 带任务 ID 前缀 → 去掉 |
+| 规范核对报告（本 skill 产物） | `5.2.<功能项序号>-<功能名>-规范核对报告.md` | `5.2-T02-01-前台商品列表与详情-规范核对报告.md` → `5.2.6-…`（**补功能序号**：从对应技术方案 `3.6.x-前台商品列表与详情-…` 推导 → 6） |
+| 验收报告 | `5.3.<功能项序号>-<功能名>-验收报告.md` | `5.3-T02-01-前台商品列表与详情-验收报告.md` → `5.3.6-…`（同上） |
+
+> **功能项序号怎么推**：从同一功能名的**技术方案文件名**（`3.<序号>.1-<功能名>-技术方案.md`）取序号；无技术方案 → 读 `1.1-功能清单.md` 功能项 # 列；仍无法确定 → 停下问用户，禁止猜。
+
+### 执行步骤
+
+1. **扫描**：`ls docs/`（模块目录）+ `find docs -name "*.md"` 列出全部中间产物，逐个对照上表核对文件名与路径
+2. **判不合规**：① 技术方案漏 `.1`（`3.1-…`）；② 文件名带任务 ID 前缀（`T0\d+-` / `T02-01` 等）；③ 5.2/5.3 报告漏功能序号（`5.2-…` / `5.3-…`）；④ 路径不在 `docs/<模块名>V<版本号>-<YYYYMMDDHHMMSS>/` 下（散落 docs 根目录 / 其他目录）
+3. **列出矫正清单**（`旧路径 → 新路径` + 原因）→ **先向用户确认**（本 skill 不改文件的原则同样适用：确认后才动手）
+4. **矫正**：`mv`（或 `git mv`，git 仓库时保留历史）移入正确目录 + 改文件名；**改动引用**：若其他 md（约束/方案/验收报告）引用了旧文件名 → 同步更新引用
+5. 矫正结果记入核对报告「产物矫正记录」小节（旧→新 + 原因），供 5.3 验收复核引用
+
+> [!NOTE] 矫正范围边界
+> 只矫正**中间产物 md 的文件名与目录**（docs/ 下产物），**不碰源码/测试代码**（src/ 由核对项检查）；无对应功能名 → 不强行改名（停下询问）。
+
 ## 执行方式（核心规则）
 
+0. **先矫正产物命名与路径**（见上「第 0 步」）：扫描 docs/ 中间产物，命名/路径不合规 → 列矫正清单 → 用户确认 → 矫正 → 再进入核对
 1. **先判模式**（见上"模式判定与核对依据"），读对应约束文件，确定选型类核对项的判定口径
 2. 对下方每一项，**实际执行「标准检查指令」**（grep/ast-grep），把**命令 + 命中行（文件:行号）粘贴为证据**
 3. 无命中 → 记 `✅`；命中违规 → 记 `❌`（附证据 + 严重度）
@@ -42,8 +70,8 @@ Java 代码生成 / 修改完成后的**兜底闸门**：规范条目多、分�
 | 1 | 接口文档支持（OpenAPI/Swagger）⚠️选型敏感 | `grep -n "springdoc\|knife4j\|springfox\|swagger" pom.xml`；`grep -rln "@Tag\|@Operation\|@Api\|@ApiOperation" src/main/java`；`grep -rln "@Schema\|@ApiModelProperty" src/main/java` | **按 2.1 选型/老约定判定**：标准模式 springdoc/knife4j → pom 有依赖 + Controller 有 @Tag/@Operation + DTO/VO 有 @Schema（Apifox 约定注解照写）；老项目 Swagger2 → 按 @Api/@ApiOperation/@ApiModelProperty 体系；老约定不写注解（纯 Apifox 在线文档）→ 按老约定，记"按老约定" | build-standards `dependency-standards.md` 4.6；java-code-standards `api-doc-standards.md` |
 | 2 | 日志框架支持 ⚠️选型敏感 | `ls src/main/resources/logback*.xml src/main/resources/log4j2*.xml`；`grep -rln "@Slf4j" src/main/java`；`grep -rn "System.out" src/main/java`；`grep -n "log4j2\|logback" pom.xml` | **按 2.1 选型/老约定判定**：Logback → logback-spring.xml 存在（控制台+滚动文件+环境级 level）；Log4j2 → log4j2 配置存在且 pom 无 logback 并存；任何模式：全类 @Slf4j、无 System.out；**日志覆盖完善（人工抽查关键类）：请求入口有入参摘要+耗时日志、关键业务节点（状态变更/下单/消费完成/定时任务完成）有 INFO、异常处有 ERROR 带堆栈——大段逻辑零日志 → ❌（存量模式同样要求，不因老项目日志稀疏豁免）** | java-code-standards `00-common/04-logging-standards.md`；build-standards 4.7 |
 | 3 | SQL 在 XML（手写 SQL 统一收拢）⚠️选型敏感 | `grep -rn "@Select\|@Insert\|@Update\|@Delete\|<script>" src/main/java`；`ls src/main/resources/mapper/*.xml` | **按 2.1/老约定判定**：标准模式 → Java 无注解 SQL，手写 SQL 全在 XML，namespace 一致；老项目 ORM/约定不同（注解 SQL/JPA）→ 按 0.5 扫描的数据访问约定判定（2.1 存量适配约束内要求的仍遵守） | database-standards `mybatis-plus/mybatis-xml-standards.md` |
-| 4 | 详细设计 SQL 注释 | `grep -rn "CREATE TABLE\|SELECT \|INSERT INTO\|UPDATE " docs/*/3.*-技术方案*.md` | 技术方案《数据模型与 SQL》所有 SQL 带注释：DDL 每字段 COMMENT；查询/DML 每条 `--` 注释（用途+归属 Mapper+关键条件） | ai-dev-workflow `3.0-技术方案-通用骨架.md`；database-standards `sql-standards.md` 1.5 |
-| 5 | DDL 字段注释 | `grep -A 25 "CREATE TABLE" src/main/resources/db/schema.sql docs/*/3.*-技术方案*.md` | CREATE TABLE **每个字段**带 `COMMENT`（含义/枚举/单位/时区）+ 表级 COMMENT；无裸字段无注释 | database-standards `table-design-standards.md` |
+| 4 | 详细设计 SQL 注释 | `grep -rn "CREATE TABLE\|SELECT \|INSERT INTO\|UPDATE " docs/*/3.*.1-技术方案*.md` | 技术方案《数据模型与 SQL》所有 SQL 带注释：DDL 每字段 COMMENT；查询/DML 每条 `--` 注释（用途+归属 Mapper+关键条件） | ai-dev-workflow `3.0-技术方案-通用骨架.md`；database-standards `sql-standards.md` 1.5 |
+| 5 | DDL 字段注释 | `grep -A 25 "CREATE TABLE" src/main/resources/db/schema.sql docs/*/3.*.1-技术方案*.md` | CREATE TABLE **每个字段**带 `COMMENT`（含义/枚举/单位/时区）+ 表级 COMMENT；无裸字段无注释 | database-standards `table-design-standards.md` |
 | 6 | JSON 入参/出参产物 | `ls docs/*/3.*.2-接口清单（前后端通用）.md`；`grep -n "入参\|出参" docs/*/3.*.2-接口清单*.md` | 每个 Controller 功能项的 `3.<功能项序号>.2-<功能名>-接口清单（前后端通用）.md` 已生成；每接口有 URL+方法+**JSON 入参示例**+**JSON 出参示例（成功/失败）**；与技术方案一致（无 HTTP 接口功能项标注跳过） | ai-dev-workflow `templates/3.4-接口清单-前后端通用.md` |
 | 7 | 事务 rollbackFor | `grep -rn "@Transactional" src/main/java` | 每个 `@Transactional` 均带 `rollbackFor = Exception.class`（无 rollbackFor → ❌） | java-code-standards `service-impl-standards.md` |
 | 8 | SQL 注入（拼接/`${}`） | `grep -rn '\${' src/main/resources/mapper/*.xml`；`grep -rn '"SELECT \|"INSERT \|"UPDATE \|"DELETE ' src/main/java` | XML 无 `${}` 拼接值（仅白名单排序/表名，需人工确认）；Java 无字符串拼接 SQL；无 `apply()/last()` 传用户输入 | database-standards `sql-standards.md`；java-code-standards `security-standards.md` |
@@ -105,6 +133,9 @@ Java 代码生成 / 修改完成后的**兜底闸门**：规范条目多、分�
 ```text
 === 关键规范核对报告（5.2.<功能项序号>-<功能名>-规范核对报告）===
 项目: <路径>    时间: <时间戳>    模式: 标准/存量适配
+产物矫正记录（第 0 步，如无 → "无，命名/路径已合规"）:
+  docs/3.1-服务产品分类与BANNER-技术方案.md → docs/<模块>V<版本>-<时间戳>/3.1.1-服务产品分类与BANNER-技术方案.md（漏 .1）
+  docs/<模块>…/5.2-T02-01-前台商品列表与详情-规范核对报告.md → …/5.2.6-前台商品列表与详情-规范核对报告.md（补功能序号 + 去任务 ID）
 [✅] 1 OpenAPI/Swagger    证据: pom.xml:12 springdoc-openapi; UserController.java:3 @Tag
 [❌] 7 事务 rollbackFor  证据: OrderServiceImpl.java:45 @Transactional（无 rollbackFor）(HIGH)
 [❌] C1 构造器注入       证据: OrderServiceImpl.java:12 @Autowired（字段注入）(HIGH)
@@ -127,6 +158,7 @@ Java 代码生成 / 修改完成后的**兜底闸门**：规范条目多、分�
 
 ## 完成标准
 
+- [ ] **产物命名与路径已矫正**（第 0 步）：docs/ 中间产物命名符合规范（技术方案 3.x.1 / 接口清单 3.x.2 / 核对报告 5.2.x / 验收报告 5.3.x，无任务 ID 前缀），路径在模块版本目录下；矫正清单已向用户确认，矫正记录写入报告
 - [ ] **模式已判定**（标准/存量适配，读对应约束文件；无约束文件时已在报告中注明口径），选型敏感项（#1/#2/#3/#10）与代码规范 C1-C4 按项目约束/老项目约定判定，非规范默认值一刀切
 - [ ] 12 项 HIGH + 代码规范组（C1-C6）+ 注释组（N1-N4）+ INFO + 场景化全部实际执行检查指令并附证据（文件:行号）
 - [ ] **N2/N3 已逐方法通读核对**（本轮生成/修改的每个 Java 文件从方法头读到方法尾，重点核过方法后半段与深层嵌套分支的注释覆盖，未只凭 grep 命中数判 ✅）
