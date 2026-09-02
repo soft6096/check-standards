@@ -2,12 +2,12 @@
 
 > Java 后端代码生成 / 修改完成后的**关键规范兜底自检**（收敛闸门）——用 grep/ast-grep 实际扫描产出，逐项核对关键规范，把没执行到位的项**提示用户确认是否补齐**。
 
-规范条目多、分散在多个规范 skill（java-code-standards / comment-standards / database-standards / build-standards），AI 编码时容易漏执行。本 skill 是**最后一道兜底**：代码写完或改完后，逐项核对 12 项 HIGH + 代码规范组 C1-C6 + 注释组 N1-N4 + INFO + 场景化，每项附「文件:行号」证据，未到位项统一提示用户确认。
+规范条目多、分散在多个规范 skill（java-code-standards / comment-standards / database-standards / build-standards），AI 编码时容易漏执行。本 skill 是**最后一道兜底**：代码写完或改完后，逐项核对**全部核对项（无级别之分）**——方法级注释/日志全覆盖（public + private/抽取方法逐个核对）、框架/产物、SQL 与数据安全、事务与代码质量、场景化，每项附「文件:行号」证据；**任何一项未执行到位（无级别之分）统一提示用户确认是否补齐**。
 
 ## 它解决什么问题
 
-- **注释没加全** → 注释组 N1-N4 核对类/方法 Javadoc 覆盖率、步骤注释、禁翻译式
-- **日志没加全** → HIGH #2 核对 @Slf4j / System.out / 入口入参耗时 / 关键节点 INFO / 异常 ERROR 带堆栈
+- **注释没加全（含抽取的 private 方法）** → #1 方法级注释全覆盖：public + private/抽取方法逐个核对 Javadoc（类/字段/方法），无豁免
+- **日志没加全（ServiceImpl 方法零日志）** → #2 方法级日志全覆盖：每个业务方法（含 private 抽取方法）方法体内 ≥1 条日志，大段逻辑零日志 = ❌
 - **中间产物命名/路径不规范** → 核对前先矫正（技术方案 3.x.1 / 接口清单 3.x.2 / 核对报告 5.2.x / 验收报告 5.3.x，去文件名中的任务 ID 前缀 T0xx，移入模块版本目录），防核对扫不到、验收引用断裂
 - **check-standards 兜底没触发** → 本 skill 独立成可单独触发的 skill（不依赖 ai-dev-workflow 全流程），description 覆盖"写完代码/改完代码/提交前检查"等触发时机
 
@@ -38,20 +38,20 @@ cp -r check-standards ~/.claude/skills/
 
 **方式 B：配合 ai-dev-workflow 流程**——`/check-standards <项目路径>`（ai-dev-workflow 5.1 收尾 / 5.3 验收时自动触发本 skill）。
 
-## 核对范围
+## 核对范围（全部核对项无级别之分，任何一项未执行都要与用户确认）
 
 | 组 | 项 |
 |---|---|
-| HIGH（12 项） | 接口文档 / 日志框架 / SQL 在 XML / SQL 注释 / DDL 注释 / JSON 产物 / 事务 rollbackFor / SQL 注入 / UPDATE-DELETE 带 WHERE / 统一返回体 / 密码加密 / 分页上限 |
-| 代码规范组 C1-C6 | 构造器注入 / 分层边界 / Entity 不暴露 / 异常处理 / 命名 / 公共组件复用 |
-| 注释组 N1-N4 | 类注释 / 方法 Javadoc / 步骤注释+WHY / 禁翻译式 |
-| INFO | 敏感信息进日志 / 集合命名 / 魔法值 |
-| 场景化 | Job 防重入 / Listener 幂等 / 文件上传安全 / 写接口幂等 |
+| 方法与日志覆盖（新代码必核） | #1 方法级注释全覆盖（public + private/抽取方法 Javadoc）/ #2 方法级日志全覆盖（每方法体内 ≥1 条日志）/ #3 步骤注释+WHY / #4 禁翻译式 / #5 全类 @Slf4j 无 System.out |
+| 框架与产物 | 接口文档支持 / 日志框架支持 / SQL 在 XML / JSON 入参出参产物 |
+| SQL 与数据安全 | SQL 注释 / DDL 注释 / SQL 注入 / UPDATE-DELETE 带 WHERE |
+| 事务与代码质量 | 事务 rollbackFor / 构造器注入 / 分层边界 / Entity 不暴露 / 异常处理 / 命名 / 统一返回体 / 密码加密 / 分页上限 |
+| 场景化 + 其余 | Job 防重入 / Listener 幂等 / 文件上传安全 / 写接口幂等 / 敏感信息 / 集合命名 / 魔法值 / 公共组件复用 |
 
 ## 核心原则
 
 1. **实际执行 grep/ast-grep，禁止凭记忆答 ✅**——每项附「文件:行号」证据
-2. **未到位项（含 INFO，不分重要与否）统一提示用户确认是否补齐**——人确认后才动手改代码，不自动默默补
+2. **所有未到位项（无级别之分）统一提示用户确认是否补齐**——人确认后才动手改代码，不自动默默补，不存在"参考项可跳过"
 3. **先判模式**（标准 / 存量适配），选型敏感项按项目约束判定，非规范默认值一刀切
 
 ## 配套 skill 生态
@@ -60,7 +60,7 @@ cp -r check-standards ~/.claude/skills/
 |---|---|
 | [ai-dev-workflow](https://github.com/soft6096/ai-dev-workflow) | 流程编排（需求→方案→任务→验收），5.1 收尾调用本 skill |
 | [java-code-standards](https://github.com/soft6096/java-code-standards) | Java 代码规范（本 skill 核对项的规范出处） |
-| [comment-standards](https://github.com/soft6096/comment-standards) | 注释规范（注释组 N1-N4 出处） |
+| [comment-standards](https://github.com/soft6096/comment-standards) | 注释规范（注释规范出处（全量注释含 private/抽取方法）） |
 | [database-standards](https://github.com/soft6096/database-standards) | SQL/表/索引规范 |
 | [build-standards](https://github.com/soft6096/build-standards) | 构建/依赖规范 |
 | [test-standards](https://github.com/soft6096/test-standards) | 测试规范 |
