@@ -36,7 +36,7 @@ cp -r check-standards ~/.claude/skills/
 | 提交前检查 | "提交前过一遍关键规范核对" |
 | 验收复核 | "对照规范核对报告复核" |
 
-**方式 B：配合 ai-dev-workflow 流程**——`/check-standards <项目路径>`（ai-dev-workflow 5.1 收尾 / 5.3 验收时自动触发本 skill）。
+**方式 B：配合 ai-dev-workflow 流程**——`/check-standards <项目路径>`（ai-dev-workflow 5.2 规范核对节点 / 5.3 验收时自动触发本 skill）。
 
 ## 核对范围（全部核对项无级别之分，任何一项未执行都要与用户确认）
 
@@ -58,9 +58,9 @@ cp -r check-standards ~/.claude/skills/
 
 | skill | 职责 |
 |---|---|
-| [ai-dev-workflow](https://github.com/soft6096/ai-dev-workflow) | 流程编排（需求→方案→任务→验收），5.1 收尾调用本 skill |
+| [ai-dev-workflow](https://github.com/soft6096/ai-dev-workflow) | 流程编排（需求→方案→任务→验收），5.2 规范核对节点调用本 skill |
 | [java-code-standards](https://github.com/soft6096/java-code-standards) | Java 代码规范（本 skill 核对项的规范出处） |
-| [comment-standards](https://github.com/soft6096/comment-standards) | 注释规范（注释规范出处（全量注释含 private/抽取方法）） |
+| [comment-standards](https://github.com/soft6096/comment-standards) | 注释规范（全量注释含 private/抽取方法） |
 | [database-standards](https://github.com/soft6096/database-standards) | SQL/表/索引规范 |
 | [build-standards](https://github.com/soft6096/build-standards) | 构建/依赖规范 |
 | [test-standards](https://github.com/soft6096/test-standards) | 测试规范 |
