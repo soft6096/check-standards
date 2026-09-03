@@ -139,19 +139,20 @@ Java 代码生成 / 修改完成后的**兜底闸门**：规范条目多、分�
 | 20 | 统一返回体 ⚠️ | `grep -rn "Map<" src/main/java/*/controller/*.java`；`grep -rln "class R\b\|class Result\b" src/main/java` | 按 2.1/老约定：Controller 返回 Response<T>/PageResult<T>（存量按老返回体），无 Map 裸返回 |
 | 21 | 密码加密 | `grep -rn -i "md5\|sha1\|DigestUtils" src/main/java` | 无 MD5/SHA1 存密码（用 BCrypt 慢哈希） |
 | 22 | 分页上限 | `grep -rn "pageSize\|PageQuery" src/main/java/*/dto/*.java` | 分页入参 pageSize 有 @Max/上限校验 |
+| 23 | 校验 message 具体性 | `grep -rn 'message = "' src/main/java` 抽查 + 定位 @NotBlank/@NotNull/@Size/@Pattern/@Min/@Max 等校验注解 | **校验注解 message 必须具体**：含业务字段名 + 具体原因（"手机号不能为空"/"数量必须大于0"）；**禁止无字段语义笼统文案**——message 值若仅由笼统词构成（前缀 `参数/数据/输入/请求/字段/内容/信息` × 结论 `不合法/错误/非法/无效/有误/不正确/格式不对`，含标点变体）→ ❌ 附证据（文件:行号 + message 原文） |
 
 ### 五、场景化 + 其余项（对应类型文件存在时才核 / 人工项）
 
 | # | 核对项 | 触发条件 / 检查指令 | 判定标准 |
 | :---: | :--- | :--- | :--- |
-| 23 | Job 防重入 + 批处理 | `grep -rln "@Scheduled" src/main/java` 有命中 | 有分布式锁/状态位防重入；批处理带 LIMIT；无长事务 |
-| 24 | Listener 幂等 + 死信 | `grep -rln "@RabbitListener\|@KafkaListener" src/main/java` 有命中 | 消费幂等；重试有上限 + 死信队列；无 catch 静默 |
-| 25 | 文件上传安全 | `grep -rln "MultipartFile" src/main/java` 有命中 | 扩展名+MIME 双白名单；UUID 重命名；大小限制 |
-| 26 | 写接口幂等（HTTP） | Controller 存在 POST/PUT 写接口 | 写接口有幂等方案（唯一键/令牌/Redis SETNX），幂等键与业务同事务（自动 grep 难查 → 人工抽查标"需人工核对"） |
-| 27 | 敏感信息进日志 | `grep -rn "password\|token\|secret" src/main/java` | 日志/异常/响应不含密码/token 明文（命中核对是否脱敏） |
-| 28 | 集合命名 | `grep -rn "List<.*> records\|List<.*> codes\|Set<.*> values" src/main/java` | 集合字段用 xxxList/xxxSet/xxxMap 后缀 |
-| 29 | 魔法值/缓存 key | 抽查常量类 | 无裸魔法值；缓存 key 集中常量定义 |
-| 30 | 公共组件复用 | 扫描 common/util、common/base 与业务重复方法体 | 无 ≥2 处相同方法体（发现 → 提示抽公共，需人工确认） |
+| 24 | Job 防重入 + 批处理 | `grep -rln "@Scheduled" src/main/java` 有命中 | 有分布式锁/状态位防重入；批处理带 LIMIT；无长事务 |
+| 25 | Listener 幂等 + 死信 | `grep -rln "@RabbitListener\|@KafkaListener" src/main/java` 有命中 | 消费幂等；重试有上限 + 死信队列；无 catch 静默 |
+| 26 | 文件上传安全 | `grep -rln "MultipartFile" src/main/java` 有命中 | 扩展名+MIME 双白名单；UUID 重命名；大小限制 |
+| 27 | 写接口幂等（HTTP） | Controller 存在 POST/PUT 写接口 | 写接口有幂等方案（唯一键/令牌/Redis SETNX），幂等键与业务同事务（自动 grep 难查 → 人工抽查标"需人工核对"） |
+| 28 | 敏感信息进日志 | `grep -rn "password\|token\|secret" src/main/java` | 日志/异常/响应不含密码/token 明文（命中核对是否脱敏） |
+| 29 | 集合命名 | `grep -rn "List<.*> records\|List<.*> codes\|Set<.*> values" src/main/java` | 集合字段用 xxxList/xxxSet/xxxMap 后缀 |
+| 30 | 魔法值/缓存 key | 抽查常量类 | 无裸魔法值；缓存 key 集中常量定义 |
+| 31 | 公共组件复用 | 扫描 common/util、common/base 与业务重复方法体 | 无 ≥2 处相同方法体（发现 → 提示抽公共，需人工确认） |
 
 > [!WARNING] #1/#2/#3 方法级核对必须逐方法通读（防"长代码丢焦点"）
 > grep/ast-grep 只能列出方法与"哪里有注释/日志"，证明不了"哪个方法缺"。**#1（方法 Javadoc）、#2（方法日志）、#3（步骤注释）必须对本轮生成/修改的每个 Java 文件逐方法通读**：
@@ -174,7 +175,7 @@ Java 代码生成 / 修改完成后的**兜底闸门**：规范条目多、分�
 [❌] 14 事务 rollbackFor  证据: OrderServiceImpl.java:45 @Transactional（无 rollbackFor）
 [❌] 27 敏感信息进日志    证据: AuthController.java:60 log.info 含明文 token
 ...
-结论: 30 项核对项：通过 X / 未通过 Y
+结论: 31 项核对项：通过 X / 未通过 Y
 ⚠️ 待用户确认清单（全部未执行到位项，一次确认，无级别之分）:
   #2 方法级日志全覆盖、#14 事务 rollbackFor、#27 敏感信息进日志 …
   （逐项：补齐/跳过）
@@ -193,7 +194,7 @@ Java 代码生成 / 修改完成后的**兜底闸门**：规范条目多、分�
 - [ ] **产物命名与路径已矫正**（第 0 步）：docs/ 中间产物命名符合规范（技术方案 3.x.1 / 接口清单 3.x.2 / 核对报告 5.2.x / 验收报告 5.3.x，无任务 ID 前缀），路径在模块版本目录下；矫正清单已向用户确认，矫正记录写入报告
 - [ ] **核对范围已界定**（指定目录 / 本轮改动 git diff / 全项目三种之一），报告已标注核对范围；检查指令路径 = 界定后范围（非全项目默认）
 - [ ] **模式已判定**（标准/存量适配，读对应约束文件；无约束文件时已在报告中注明口径），选型敏感项（#6/#7/#8/#20）按项目约束/老项目约定判定，非规范默认值一刀切
-- [ ] **全部 30 项核对项已实际执行检查指令并附证据（文件:行号）**——含 #1 方法级注释（public + private + 抽取方法）、#2 方法级日志、#3 步骤注释
+- [ ] **全部 31 项核对项已实际执行检查指令并附证据（文件:行号）**——含 #1 方法级注释（public + private + 抽取方法）、#2 方法级日志、#3 步骤注释、#23 校验 message 具体性
 - [ ] **#1/#2/#3 已逐方法通读核对**（本轮生成/修改的每个 Java 文件从方法头读到方法尾，重点核过 private/抽取方法、方法后半段与深层嵌套分支的注释与日志覆盖，未只凭 grep 命中数判 ✅）
 - [ ] **所有未执行到位项（无级别之分）已一起向用户确认是否补齐**——确认"补齐"的项已补齐重跑通过；用户选择"跳过"或补齐后仍 ❌ → 已标注"需人工核对"（不静默吞掉）
 - [ ] 核对报告已输出（走流程时落盘 `docs/<模块名>V<版本号>-<YYYYMMDDHHMMSS>/5.2.<功能项序号>-<功能名>-规范核对报告.md`）
